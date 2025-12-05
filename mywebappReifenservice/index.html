@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reifen-Angebots-Rechner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body { font-family: 'Segoe UI', sans-serif; background: #f0f3f8; padding: 20px; margin:0; }
+.container { max-width: 900px; margin:0 auto; background:#fff; padding:20px; border-radius:15px; box-shadow:0 8px 20px rgba(0,0,0,0.08); }
+h1 { text-align:center; font-size:22px; margin-bottom:15px; font-weight:600; }
+.row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px; align-items:center; }
+label { font-weight:600; color:#34495e; min-width:130px; font-size:14px; }
+input[type='number'], input[type='text'], input[type='date'], select { flex:1; padding:6px 8px; border-radius:10px; border:1px solid #d1d8e0; font-size:13px; background:#f8f9fc; }
+.service-box { display:flex; gap:8px; justify-content:space-between; }
+.service-item { flex:1; background:#f1f4f9; border-radius:10px; text-align:center; height:40px; display:flex; align-items:center; justify-content:center; position:relative; cursor:pointer; font-size:12px; padding:0 5px; }
+.service-item input[type=checkbox]{ position:absolute; left:5px; top:50%; transform:translateY(-50%) scale(0.8); }
+.service-item .text-price { margin-left:20px; display:flex; justify-content:space-between; width:100%; align-items:center; }
+.result-row { display:flex; gap:10px; align-items:stretch; }
+.result-box, .offer-box, .profit-box { flex:1; display:flex; flex-direction:column; justify-content:center; padding:8px 12px; border-radius:12px; font-size:14px; font-weight:600; min-height:60px; }
+.result-box { background:#e7f9fc; border-left:4px solid #00acc1; }
+.offer-box { background:#ffe1b3; border-left:4px solid #ff9900; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+.profit-box { background:#e3f6e4; border-left:4px solid #00b050; text-align:center; }
+.result-box .line { display:flex; justify-content:space-between; width:100%; padding:1px 0; font-size:13px; }
+.result-box .total { border-top:1px solid #00acc1; margin-top:4px; padding-top:4px; }
+.offer-input { border:none; font-size:16px; font-weight:600; width:80px; background:transparent; text-align:center; }
+.pdf-button { margin-top:10px; padding:10px 18px; border-radius:12px; border:none; font-size:15px; cursor:pointer; color:#fff; background-color:#007c91; }
+.pdf-button:hover { background-color:#005f6a; }
+.hidden { display:none !important; }
+.button-row { display:flex; gap:10px; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Reifen-Angebots-Rechner</h1>
+
+<!-- Kundendaten -->
+<div class="row">
+<label>Kunde:</label><input type="text" id="kunde">
+<label>Auto:</label><input type="text" id="auto">
+</div>
+
+<!-- Stückzahl & Felgen/Reifen -->
+<div class="row">
+<label>Stückzahl:</label><input type="number" id="qty" min="1" value="1">
+<select id="felgentyp"><option value="">Felgentyp</option><option>Alu</option><option>Stahl</option></select>
+<select id="reifen_art"><option value="">Reifenart</option><option>Sommerreifen</option><option>Winterreifen</option></select>
+</div>
+
+<!-- Services -->
+<div class="row service-box">
+<label class="service-item"><input type="checkbox" id="demontage"><div class="text-price">Demontage <span>1,50€</span></div></label>
+<label class="service-item"><input type="checkbox" id="aufziehen"><div class="text-price">Aufziehen <span>4,00€</span></div></label>
+<label class="service-item"><input type="checkbox" id="wuchten"><div class="text-price">Wuchten <span>2,00€</span></div></label>
+<label class="service-item"><input type="checkbox" id="montieren"><div class="text-price">Montieren <span>2,50€</span></div></label>
+<label class="service-item"><input type="checkbox" id="entsorgen"><div class="text-price">Entsorgen <span>4,00€</span></div></label>
+</div>
+
+<!-- Reifenoption -->
+<div class="row">
+<label>Reifen:</label>
+<select id="reifen_option"><option value="beigestellt">Beigestellt</option><option value="bestellen">Bestellen</option></select>
+<input type="number" id="reifenpreis" placeholder="Preis/Stk." step="0.01" min="0">
+</div>
+
+<!-- Dimensionen -->
+<div class="row hidden" id="dimRow">
+<label>Dimension:</label>
+<select id="dim_breite"><option value="">Breite</option></select>
+<select id="dim_hoehe"><option value="">Höhe</option></select>
+<select id="dim_zoll"><option value="">Zoll</option></select>
+</div>
+
+<!-- Index -->
+<div class="row hidden" id="indexRow">
+<select id="load_index"><option value="">Tragfähigkeit</option></select>
+<select id="xl_reinforced"><option value="">Verstärkung</option><option>Normal</option><option>XL</option></select>
+<select id="speed_index"><option value="">Geschwindigkeit</option></select>
+</div>
+
+<!-- Ergebnis & Angebot -->
+<div class="row result-row">
+<div class="result-box">
+<div class="line"><span>Material:</span><span id="material">0,00€</span></div>
+<div class="line"><span>Service:</span><span id="arbeit">0,00€</span></div>
+<div class="line total"><span>Gesamt:</span><span id="ergebnis">0,00€</span></div>
+</div>
+<div class="offer-box">
+Angebotspreis:
+<div><input type="number" id="angebotspreis" class="offer-input">€</div>
+</div>
+<div class="profit-box">
+Gewinn:<br><span id="gewinn">0,00€</span>
+</div>
+</div>
+
+<!-- Bearbeiter & Datum -->
+<div class="row">
+<label>Bearbeiter / Datum:</label>
+<select id="bearbeiter"><option value="">Bitte wählen</option><option>Christoph</option><option>Klaus</option></select>
+<input type="date" id="datum">
+</div>
+
+<!-- PDF Buttons -->
+<div class="button-row">
+<button class="pdf-button" id="pdfUebersicht">Übersicht</button>
+<button class="pdf-button" id="pdfAngebot">Angebot</button>
+</div>
+</div>
+
+<script>
+// Datum automatisch setzen
+document.getElementById('datum').valueAsDate = new Date();
+
+// Dimensionen füllen
+for(let i=155;i<=330;i+=5) dim_breite.add(new Option(i,i));
+for(let i=30;i<=75;i++) dim_hoehe.add(new Option(i,i));
+for(let i=13;i<=22;i++) dim_zoll.add(new Option(i,i));
+
+// Tragfähigkeit (kg)
+const loadKg = {50:190,51:195,52:200,53:206,54:212,55:218,56:224,57:230,58:236,59:243,60:250,61:257,62:265,63:272,64:280,65:290,66:300,67:307,68:315,69:325,70:335,71:345,72:355,73:365,74:375,75:387,76:400,77:412,78:425,79:437,80:450,81:462,82:475,83:487,84:500,85:515,86:530,87:545,88:560,89:580,90:600,91:615,92:630,93:650,94:670,95:690,96:710,97:730,98:750,99:775,100:800,101:825,102:850,103:875,104:900,105:925,106:950,107:975,108:1000,109:1030,110:1060,111:1090,112:1120,113:1150,114:1180,115:1215,116:1250,117:1285,118:1320,119:1360,120:1400};
+for(let i=50;i<=120;i++){ load_index.add(new Option(`${i} (${loadKg[i]} kg)`, i)); }
+
+// Geschwindigkeitsindex
+const speedOptions = [{code:'L', kmh:120},{code:'M', kmh:130},{code:'N', kmh:140},{code:'P', kmh:150},{code:'Q', kmh:160},{code:'R', kmh:170},{code:'S', kmh:180},{code:'T', kmh:190},{code:'U', kmh:200},{code:'H', kmh:210},{code:'V', kmh:240},{code:'W', kmh:270},{code:'Y', kmh:300}];
+speedOptions.forEach(opt=>{ speed_index.add(new Option(`${opt.code} (${opt.kmh} km/h)`, opt.code)); });
+
+// Sichtbarkeit Reifenoption
+function updateVisibility(){
+    const beigestellt = reifen_option.value==="beigestellt";
+    dimRow.classList.toggle("hidden",beigestellt);
+    indexRow.classList.toggle("hidden",beigestellt);
+    reifenpreis.classList.toggle("hidden",beigestellt);
+    reifenpreis.disabled = beigestellt;
+}
+reifen_option.addEventListener("change",updateVisibility);
+updateVisibility();
+
+// Berechnung
+function berechnen(){
+    const qtyVal=parseFloat(qty.value)||0;
+    const preise={demontage:1.5,aufziehen:4,wuchten:2,montieren:2.5,entsorgen:4};
+    let service=0; for(let id in preise){if(document.getElementById(id).checked) service+=preise[id];} service*=qtyVal;
+    let material=0; if(reifen_option.value==="bestellen"){material=(parseFloat(reifenpreis.value)||0)*qtyVal;}
+    materialEl.textContent=material.toFixed(2)+"€";
+    arbeitEl.textContent=service.toFixed(2)+"€";
+    ergebnis.textContent=(material+service).toFixed(2)+"€";
+    const angebot=parseFloat(angebotspreis.value)||0;
+    gewinn.textContent=(angebot-material).toFixed(2)+"€";
+}
+const materialEl=document.getElementById("material");
+const arbeitEl=document.getElementById("arbeit");
+const ergebnis=document.getElementById("ergebnis");
+const gewinn=document.getElementById("gewinn");
+document.querySelectorAll("input,select").forEach(el=>{el.addEventListener("input",berechnen);el.addEventListener("change",berechnen);});
+berechnen();
+
+// PDF Generator
+function generierePDF(showDetails){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    let y=20;
+    const qtyVal = parseInt(qty.value)||1;
+
+    doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text("Angebot Reifenservice",20,y); y+=10;
+    doc.setFont("helvetica","normal"); doc.setFontSize(10);
+    doc.text(`Bearbeiter: ${bearbeiter.value || "-"}`,20,y); y+=5;
+    doc.text(`Datum: ${datum.value || "-"}`,20,y);
+
+    doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("Eichlberger",170,20,{align:"right"});
+    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text("Teucht 19, 4722 Peuerbach",170,25,{align:"right"});
+
+    y+=8; doc.setDrawColor(200); doc.setLineWidth(0.5); doc.line(20,y,190,y); y+=8;
+
+    function writeRow(label,value){ doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(label,20,y); doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.text(String(value||"-"),70,y); y+=7;}
+
+    writeRow("Kunde:",kunde.value); writeRow("Fahrzeug:",auto.value);
+    y+=4; doc.setDrawColor(230); doc.line(20,y,190,y); y+=8;
+
+    writeRow("Stückzahl:",qty.value); writeRow("Felgentyp:",felgentyp.value||"-"); writeRow("Reifenart:",reifen_art.value||"-"); writeRow("Reifenoption:",reifen_option.value||"-");
+    if(showDetails && reifen_option.value==="bestellen") writeRow("Preis/Stk.:",reifenpreis.value ? parseFloat(reifenpreis.value).toFixed(2)+" €":"0,00 €");
+    if(!dimRow.classList.contains("hidden")) writeRow("Dimensionen:",`B: ${dim_breite.value||"-"} H: ${dim_hoehe.value||"-"} Z: ${dim_zoll.value||"-"}`);
+    if(!indexRow.classList.contains("hidden")){writeRow("Tragfähigkeit:",load_index.options[load_index.selectedIndex]?.text||"-"); writeRow("Verstärkung:",xl_reinforced.value||"-"); writeRow("Geschwindigkeit:",speed_index.options[speed_index.selectedIndex]?.text||"-");}
+
+    y+=4; doc.setDrawColor(230); doc.line(20,y,190,y); y+=8;
+
+    doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text("Ausgewählte Services",20,y); y+=8;
+    doc.setFont("helvetica","normal"); doc.setFontSize(11);
+    const servicesList=[{id:"demontage",label:"Demontage",preis:1.5},{id:"aufziehen",label:"Aufziehen",preis:4},{id:"wuchten",label:"Wuchten",preis:2},{id:"montieren",label:"Montieren",preis:2.5},{id:"entsorgen",label:"Entsorgen",preis:4}];
+    servicesList.forEach(s=>{
+        if(document.getElementById(s.id).checked){
+            const gesamt = (s.preis*qtyVal).toFixed(2);
+            writeRow(s.label,`${s.preis.toFixed(2)} € x ${qtyVal} Stk. = ${gesamt} €`);
+        }
+    });
+
+    y+=4; doc.setDrawColor(230); doc.line(20,y,190,y); y+=8;
+
+    if(showDetails){
+        writeRow("Material:",parseFloat(materialEl.textContent).toFixed(2)+"€"); 
+        writeRow("Service:",parseFloat(arbeitEl.textContent).toFixed(2)+"€"); 
+        doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text("GESAMT:",20,y); doc.text(parseFloat(ergebnis.textContent).toFixed(2)+"€",70,y); y+=8; 
+        doc.setTextColor(0,120,0); doc.text("Angebotspreis:",20,y); doc.text(parseFloat(angebotspreis.value||0).toFixed(2)+" €",70,y); y+=7; 
+        doc.setTextColor(0,90,0); doc.text("Gewinn:",20,y); doc.text(parseFloat(gewinn.textContent).toFixed(2)+"€",70,y); y+=10;
+    } else {
+        doc.setTextColor(0,120,0); doc.text("Angebotspreis:",20,y); doc.text(parseFloat(angebotspreis.value||0).toFixed(2)+" €",70,y); y+=7;
+    }
+
+    doc.setDrawColor(240); doc.line(20,280,190,280); doc.setFontSize(9); doc.setTextColor(120); doc.text(`Tagesaktuelle Preise - ${datum.value}`,20,285,{ maxWidth: 170 });
+
+    doc.save(`${kunde.value||'Angebot'}.pdf`);
+}
+
+// Buttons
+pdfUebersicht.addEventListener("click",()=>generierePDF(true));
+pdfAngebot.addEventListener("click",()=>generierePDF(false));
+</script>
+</body>
+</html>
